@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <canvas id="canvas" width="800px" height="600px"></canvas>
+</body>
+
+<script id="vertexShader" type="x-shader/x-vertex">
+    attribute vec2 coordinate;
+    void main(void) {
+        gl_Position = vec4(coordinate, 0.0, 1.0);
+        gl_PointSize = 5.0;
+    }
+</script>
+
+<script id="fragmentShader" type="x-shader/x-fragment">
+    void main(void) {
+        gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    }
+</script>
+
+<script>
+    var canvas = document.getElementById("canvas");
+    var gl = canvas.getContext("webgl");
+
+    var vertCode = document.getElementById("vertexShader").innerHTML;
+    var fragCode = document.getElementById("fragmentShader").innerHTML;
+
+    function makeShader(gl, src, type) {
+        var shader = gl.createShader(type);
+        gl.shaderSource(shader, src);
+        gl.compileShader(shader);
+        return shader;
+    }
+
+    function makeProgram(gl, vertShader, fragShader) {
+        var program = gl.createProgram();
+        gl.attachShader(program, vertShader);
+        gl.attachShader(program, fragShader);
+        gl.linkProgram(program);
+        gl.useProgram(program);
+        return program;
+    }
+
+    function makeBuffer(gl, data) {
+        var buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        return buffer;
+    }
+
+    function adjustVertexShader(gl, buffer, program, varName, size, offset) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        var coordPos = gl.getAttribLocation(program, varName);
+        gl.vertexAttribPointer(coordPos, size, gl.FLOAT, false, 0, offset);
+        gl.enableVertexAttribArray(coordPos);
+    }
+
+    function reset() {
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+
+    function pointGenerator(centerX, centerY, radius) {
+        var points = [];
+        var x = 0;
+        var y = radius;
+        var scale = 4000;
+        var decisionParameter = 1 - radius; // Initial decision parameter
+
+        while (x < y) {
+            // Quad 1
+            points.push((centerX + x) / scale); // Save x coordinate
+            points.push((centerY + y) / scale); // Save y coordinate
+
+            // Quad 2
+            points.push(-(centerX + x) / scale); // Save x coordinate
+            points.push((centerY + y) / scale); // Save y coordinate
+
+            // Quad 3
+            points.push(-(centerX + x) / scale); // Save x coordinate
+            points.push(-(centerY + y) / scale); // Save y coordinate
+
+            // Quad 4
+            points.push((centerX + x) / scale); // Save x coordinate
+            points.push(-(centerY + y) / scale); // Save y coordinate
+
+            // Quad 1
+            points.push((centerX + y) / scale); // Save x coordinate
+            points.push((centerY + x) / scale); // Save y coordinate
+            // Quad 2
+            points.push(-(centerX + y) / scale); // Save x coordinate
+            points.push((centerY + x) / scale); // Save y coordinate
+            // Quad 3
+            points.push(-(centerX + y) / scale); // Save x coordinate
+            points.push(-(centerY + x) / scale); // Save y coordinate
+            // Quad 4
+            points.push((centerX + y) / scale); // Save x coordinate
+            points.push(-(centerY + x) / scale); // Save y coordinate
+
+            console.log("dp : " + decisionParameter);
+            if (decisionParameter < 0) {
+                decisionParameter += 2 * x + 3;
+                x++;
+            } else {
+                decisionParameter += 2 * (x - y) + 5;
+                x++;
+                y--;
+            }
+        }
+
+        return points;
+    }
+
+    var centerX = 319.0;
+    var centerY = 239.0;
+    var radius = 100.0;
+
+    var p = pointGenerator(centerX, centerY, radius);
+    console.log(p);
+    var flattenedPoints = [].concat.apply([], p);
+    var vertices = new Float32Array(p);
+
+    // var vertices = new Float32Array([
+    //     0.25, 0.55,
+    //     0.35, 0.44,
+    //     0.9, 0.9
+    // ]);
+    console.log(vertices);
+
+    var vertexBuffer = makeBuffer(gl, vertices);
+    var vertShader = makeShader(gl, vertCode, gl.VERTEX_SHADER);
+    var fragShader = makeShader(gl, fragCode, gl.FRAGMENT_SHADER);
+    var program = makeProgram(gl, vertShader, fragShader);
+    adjustVertexShader(gl, vertexBuffer, program, "coordinate", 2, 0, 0);
+    reset();
+    gl.drawArrays(gl.POINTS, 0, vertices.length/2);
+
+</script>
+
+</html>
